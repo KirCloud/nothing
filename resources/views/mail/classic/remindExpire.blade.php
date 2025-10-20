@@ -1,187 +1,139 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <title>到期提示</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <style type="text/css">
-        img {
-            max-width: 100%;
-        }
-
+        /* ---------- 全局基础设置 ---------- */
         body {
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f7; /* 柔和灰底 */
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #1d1d1f;
             -webkit-font-smoothing: antialiased;
-            -webkit-text-size-adjust: none;
-            width: 100% !important;
-            height: 100%;
-            line-height: 1.6em;
+            line-height: 1.6;
+        }
+        img { max-width: 100%; display: block; }
+
+        /* ---------- 容器与卡片 ---------- */
+        .container {
+            max-width: 600px;
+            margin: 36px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+            overflow: hidden;
         }
 
-        body {
-            background-color: #f6f6f6;
+        /* ---------- 头部标题 ---------- */
+        .header {
+            background: linear-gradient(180deg,#f7f7f9,#f2f2f5);
+            text-align: center;
+            padding: 28px 20px;
+            border-bottom: 1px solid #e8e8ea;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #0a0a0a;
         }
 
+        /* ---------- 内容区 ---------- */
+        .content {
+            padding: 32px 36px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 12px;
+            color: #0b0b0b;
+        }
+        .message {
+            font-size: 15px;
+            color: #505050;
+            margin: 10px 0 20px;
+        }
+        .highlight {
+            color: #0071e3; /* Apple 蓝 */
+            font-weight: 600;
+        }
+        .note {
+            font-size: 13px;
+            color: #8b8b90;
+            margin-top: 16px;
+        }
+
+        /* ---------- 按钮 ---------- */
+        .btn {
+            display: inline-block;
+            background: #0071e3;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 28px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: background 0.2s ease;
+        }
+        .btn:hover { background: #005bb5; }
+
+        /* ---------- 页脚 ---------- */
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #9b9b9f;
+            border-top: 1px solid #f0f0f2;
+            background: #fafafa;
+        }
+        .footer a {
+            color: inherit;
+            text-decoration: none;
+            margin: 0 6px;
+        }
+
+        /* ---------- 响应式 ---------- */
         @media only screen and (max-width: 640px) {
-            body {
-                padding: 0 !important;
-            }
-
-            h1 {
-                font-weight: 800 !important;
-                margin: 20px 0 5px !important;
-            }
-
-            h2 {
-                font-weight: 800 !important;
-                margin: 20px 0 5px !important;
-            }
-
-            h3 {
-                font-weight: 800 !important;
-                margin: 20px 0 5px !important;
-            }
-
-            h4 {
-                font-weight: 800 !important;
-                margin: 20px 0 5px !important;
-            }
-
-            h1 {
-                font-size: 22px !important;
-            }
-
-            h2 {
-                font-size: 18px !important;
-            }
-
-            h3 {
-                font-size: 16px !important;
-            }
-
-            .container {
-                padding: 0 !important;
-                width: 100% !important;
-            }
-
-            .content {
-                padding: 0 !important;
-            }
-
-            .content-wrap {
-                padding: 10px !important;
-            }
-
-            .invoice {
-                width: 100% !important;
-            }
+            .container { margin: 18px; }
+            .content { padding: 20px; }
+            .greeting { font-size: 16px; }
+            .message { font-size: 14px; }
+            .btn { padding: 10px 20px; font-size: 14px; }
         }
     </style>
 </head>
+<body>
+    <!-- 外层主容器 -->
+    <div class="container" role="article" aria-label="到期提示邮件">
+        <!-- 头部标题 -->
+        <div class="header">
+            <h1>到期提示</h1>
+        </div>
 
-<body itemscope itemtype="http://schema.org/EmailMessage"
-    style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: none; width: 100% !important; height: 100%; line-height: 1.6em; background-color: #f6f6f6; margin: 0;"
-    bgcolor="#f6f6f6">
-    <table class="body-wrap"
-        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; width: 100%; background-color: #f6f6f6; margin: 0;"
-        bgcolor="#f6f6f6">
-        <tr
-            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-            <td style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0;"
-                valign="top">
-            </td>
-            <td class="container" width="600"
-                style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; display: block !important; max-width: 600px !important; clear: both !important; margin: 0 auto;"
-                valign="top">
-                <div class="content"
-                    style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; max-width: 600px; display: block; margin: 0 auto; padding: 20px;">
-                    <table class="main" width="100%" cellpadding="0" cellspacing="0"
-                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; border-radius: 3px; background-color: #fff; margin: 0; border: 1px solid #e9e9e9;"
-                        bgcolor="#fff">
-                        <tr
-                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                            <td class="alert alert-warning"
-                                style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 22px; font-weight: bold; vertical-align: top; color: #fff; font-weight: 500; text-align: center; border-radius: 3px 3px 0 0; background-color: #0073ba; margin: 0; padding: 20px;"
-                                align="center" bgcolor="#0073ba" valign="top">
-                                到期提示
-                            </td>
-                        </tr>
-                        <tr
-                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                            <td class="content-wrap"
-                                style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 20px;"
-                                valign="top">
-                                <table width="100%" cellpadding="0" cellspacing="0"
-                                    style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <tr
-                                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                        <td class="content-block"
-                                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 34px; vertical-align: top; line-height: 1em; margin: 0; padding: 20px 0 30px;"
-                                            valign="top">
-                                            Dear Customer
-                                        </td>
-                                    </tr>
-                                    <tr
-                                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                        <td class="content-block"
-                                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 16px; color: #4a4a4a; vertical-align: top; margin: 0; padding: 0 0 20px;"
-                                            valign="top">
-                                            您的订阅套餐将于 <strong>24</strong> 小时后到期，请及时续费
-                                        </td>
-                                    </tr>
-                                    <tr
-                                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                        <td class="content-block"
-                                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #757575; vertical-align: top; margin: 0; padding: 0 0 20px;"
-                                            valign="top">
-                                            (本邮件由系统自动发出，请勿直接回复)
-                                        </td>
-                                    </tr>
-                                    <tr
-                                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                        <td class="content-block"
-                                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; text-align: center; vertical-align: top; margin: 0; padding: 0 0 20px;"
-                                            valign="top">
-                                            <a href="{{$url}}"
-                                                class="btn-primary"
-                                                style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; color: #fff; text-decoration: none; line-height: 2em; font-weight: bold; text-align: center; cursor: pointer; display: inline-block; border-radius: 5px; text-transform: capitalize; background-color: #0073ba; margin: 0; border-color: #0073ba; border-style: solid; border-width: 8px 20px;">登录 {{$name}}</a>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                    <div class="footer"
-                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; width: 100%; clear: both; color: #999; margin: 0; padding: 20px;">
-                        <table width="100%"
-                            style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                            <tr
-                                style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                <td class="aligncenter content-block"
-                                    style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; vertical-align: top; color: #999; text-align: center; margin: 0; padding: 0;"
-                                    align="center" valign="top">
-                                    &copy; {{$name}}. All Rights Reserved.
-                                </td>
-                            </tr>
-                            <tr
-                                style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                <td class="aligncenter content-block"
-                                    style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; vertical-align: top; color: #999; text-align: center; margin: 0; padding: 0 0 20px;"
-                                    align="center" valign="top">
-                                    <a href="{{$url}}/#/subscribe"
-                                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #999; text-decoration: none; margin: 0;">我的订阅</a> |
-                                    <a href="{{$url}}/#/knowledge"
-                                        style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #999; text-decoration: none; margin: 0;">使用教程</a>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-            </td>
-            <td style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0;"
-                valign="top">
-            </td>
-        </tr>
-    </table>
+        <!-- 正文内容 -->
+        <div class="content">
+            <p class="greeting">尊敬的用户：</p>
+            <p class="message">
+                您的订阅套餐将于 <span class="highlight">24小时后</span> 到期，请及时续费以免影响使用。
+            </p>
+            <div style="text-align:center; margin-top:24px;">
+                <!-- Blade 变量保持不变 -->
+                <a href="{{$url}}" class="btn" target="_blank" rel="noopener noreferrer">登录 {{$name}}</a>
+            </div>
+            <p class="note">(本邮件由系统自动发出，请勿直接回复)</p>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="footer">
+            <div>&copy; {{$name}}. All Rights Reserved.</div>
+            <div>
+                <a href="{{$url}}/#/profile">我的订阅</a> |
+                <a href="{{$url}}/#/docs">使用教程</a>
+            </div>
+        </div>
+    </div>
 </body>
-
 </html>

@@ -103,6 +103,22 @@ class ConfigSave extends FormRequest
         'password_limit_enable' => 'in:0,1',
         'password_limit_count' => 'integer',
         'password_limit_expire' => 'integer',
+        // marketing email
+        'marketing_email_enable' => 'in:0,1',
+        'marketing_email_host' => 'nullable|string',
+        'marketing_email_port' => 'nullable|integer',
+        'marketing_email_encryption' => 'nullable|string',
+        'marketing_email_username' => 'nullable|string',
+        'marketing_email_password' => 'nullable|string',
+        'marketing_email_from_address' => 'nullable|email',
+        'marketing_email_from_name' => 'nullable|string',
+        'marketing_email_frequency' => 'nullable|in:hourly,everyThirtyMinutes,daily',
+        'marketing_email_send_count' => 'nullable|integer|min:1',
+        'marketing_email_user_limit' => 'nullable|integer|min:1',
+        'marketing_email_time_limit' => 'nullable|integer|min:1',
+        'marketing_email_subject' => 'nullable|string',
+        'marketing_email_brand_name' => 'nullable|string',
+        'marketing_email_coupon_code' => 'nullable|string',
     ];
     /**
      * Get the validation rules that apply to the request.

@@ -7,6 +7,10 @@ use App\Http\Requests\Admin\ConfigSave;
 use App\Jobs\SendEmailJob;
 use App\Services\TelegramService;
 use App\Utils\Dict;
+use App\Models\User;
+use App\Services\MailService;
+use Illuminate\Support\Facades\Config;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -139,7 +143,22 @@ class ConfigController extends Controller
                 'email_username' => config('v2board.email_username'),
                 'email_password' => config('v2board.email_password'),
                 'email_encryption' => config('v2board.email_encryption'),
-                'email_from_address' => config('v2board.email_from_address')
+                'email_from_address' => config('v2board.email_from_address'),
+                'marketing_email_enable' => (int)config('v2board.marketing_email_enable', 1),
+                'marketing_email_host' => config('v2board.marketing_email_host', 'smtp.fastmail.com'),
+                'marketing_email_port' => config('v2board.marketing_email_port', 465),
+                'marketing_email_encryption' => config('v2board.marketing_email_encryption', 'ssl'),
+                'marketing_email_username' => config('v2board.marketing_email_username', 'djc@qq.site'),
+                'marketing_email_password' => config('v2board.marketing_email_password', '563fF#5d'),
+                'marketing_email_from_address' => config('v2board.marketing_email_from_address', 'djc@qq.site'),
+                'marketing_email_from_name' => config('v2board.marketing_email_from_name', 'KirSSR'),
+                'marketing_email_frequency' => config('v2board.marketing_email_frequency', 'hourly'),
+                'marketing_email_send_count' => (int)config('v2board.marketing_email_send_count', 30),
+                'marketing_email_user_limit' => (int)config('v2board.marketing_email_user_limit', 2),
+                'marketing_email_time_limit' => (int)config('v2board.marketing_email_time_limit', 30),
+                'marketing_email_subject' => config('v2board.marketing_email_subject', 'KirSSR欢迎您回归，特奉上8折优惠码'),
+                'marketing_email_brand_name' => config('v2board.marketing_email_brand_name', 'KirSSR'),
+                'marketing_email_coupon_code' => config('v2board.marketing_email_coupon_code', '优惠码')
             ],
             'telegram' => [
                 'telegram_bot_enable' => config('v2board.telegram_bot_enable', 0),
@@ -219,4 +238,114 @@ class ConfigController extends Controller
             'data' => true
         ]);
     }
+    public function toggleMarketingEmail(Request $request)
+{
+    $enable = $request->input('enable', 1);
+    
+    // 更新配置文件
+    $config = config('v2board');
+    $config['marketing_email_enable'] = (int)$enable;
+    
+    $data = var_export($config, 1);
+    if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {
+        return response(['message' => '修改失败'], 500);
+    }
+    
+    // 清除配置缓存
+    if (function_exists('opcache_reset')) {
+        opcache_reset();
+    }
+    Artisan::call('config:cache');
+    
+    return response([
+        'data' => [
+            'marketing_email_enable' => (int)$enable,
+            'message' => $enable ? '营销邮件已开启' : '营销邮件已关闭'
+        ]
+    ]);
+}
+
+public function saveMarketingEmailConfig(Request $request)
+{
+    $data = $request->validate([
+        'marketing_email_host' => 'required|string',
+        'marketing_email_port' => 'required|integer',
+        'marketing_email_encryption' => 'required|string',
+        'marketing_email_username' => 'required|string',
+        'marketing_email_password' => 'required|string',
+        'marketing_email_from_address' => 'required|email',
+        'marketing_email_from_name' => 'required|string',
+        'marketing_email_frequency' => 'required|in:hourly,everyThirtyMinutes,daily',
+        'marketing_email_send_count' => 'required|integer|min:1',
+        'marketing_email_user_limit' => 'required|integer|min:1',
+        'marketing_email_time_limit' => 'required|integer|min:1',
+        'marketing_email_subject' => 'required|string',
+        'marketing_email_brand_name' => 'required|string',
+        'marketing_email_coupon_code' => 'nullable|string',
+    ]);
+    
+    // 读取当前v2board配置
+    $config = config('v2board');
+    
+    // 更新营销邮件配置
+    foreach ($data as $key => $value) {
+        $config[$key] = $value;
+    }
+    
+    // 保存到v2board.php文件
+    $configData = var_export($config, 1);
+    if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $configData ;")) {
+        return response(['message' => '保存失败'], 500);
+    }
+    
+    // 清除配置缓存
+    if (function_exists('opcache_reset')) {
+        opcache_reset();
+    }
+    Artisan::call('config:cache');
+    
+    return response([
+        'data' => $data,
+        'message' => '营销邮件配置保存成功'
+    ]);
+}
+
+public function testMarketingEmail(Request $request)
+{
+    $email = $request->input('email', $request->user['email']);
+    
+    // 查找用户
+    $user = User::where('email', $email)->first();
+
+    if (!$user) {
+        return response([
+            'message' => '用户不存在'
+        ], 404);
+    }
+
+    $mailService = new MailService();
+    try {
+        // 临时设置配置，确保测试邮件使用最新配置
+        Config::set('v2board.marketing_email_host', config('v2board.marketing_email_host'));
+        Config::set('v2board.marketing_email_port', config('v2board.marketing_email_port'));
+        Config::set('v2board.marketing_email_encryption', config('v2board.marketing_email_encryption'));
+        Config::set('v2board.marketing_email_username', config('v2board.marketing_email_username'));
+        Config::set('v2board.marketing_email_password', config('v2board.marketing_email_password'));
+        Config::set('v2board.marketing_email_from_address', config('v2board.marketing_email_from_address'));
+        Config::set('v2board.marketing_email_from_name', config('v2board.marketing_email_from_name'));
+        Config::set('v2board.marketing_email_subject', config('v2board.marketing_email_subject'));
+        Config::set('v2board.marketing_email_brand_name', config('v2board.marketing_email_brand_name'));
+        Config::set('v2board.marketing_email_coupon_code', config('v2board.marketing_email_coupon_code'));
+
+        $haha = $mailService->sendMarketingEmail($user);
+        return response([
+            'data' => true,
+            'message' => $haha
+        ]);
+    } catch (\Exception $e) {
+        return response([
+            'message' => '发送失败: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

@@ -43,6 +43,26 @@ class Kernel extends ConsoleKernel
         $schedule->command('send:remindMail')->dailyAt('11:30');
         // horizon metrics
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
+        // marketing email - send based on configured frequency
+        // marketing email - send based on configured frequency
+        if (config('v2board.marketing_email_enable', 1)) {
+            $frequency = config('v2board.marketing_email_frequency', 'hourly');
+            $sendCount = config('v2board.marketing_email_send_count', 30);
+            $scheduleCommand = $schedule->command('send:marketingEmail --count=' . $sendCount);
+        
+            switch ($frequency) {
+                case 'everyThirtyMinutes':
+                    $scheduleCommand->everyThirtyMinutes();
+                    break;
+                case 'daily':
+                    $scheduleCommand->daily();
+                    break;
+                case 'hourly':
+                default:
+                    $scheduleCommand->hourly();
+                    break;
+            }
+        }
     }
 
     /**
