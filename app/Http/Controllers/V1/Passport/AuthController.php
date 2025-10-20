@@ -224,12 +224,26 @@ class AuthController extends Controller
             abort(500, __('Your account has been suspended'));
         }
 
+        // 登录成功后：若检测为旧版密码算法，自动升级为当前 password_hash
+        $algo = $user->password_algo;
+        $hash = $user->password;
+        $isLegacyByAlgo = in_array($algo, ['md5', 'md5salt', 'sha256'], true);
+        $isHex32 = is_string($hash) && strlen($hash) === 32 && ctype_xdigit($hash);
+        $isHex64 = is_string($hash) && strlen($hash) === 64 && ctype_xdigit($hash);
+        $isLegacyByGuess = (empty($algo) || $algo === null) && ($isHex32 || $isHex64);
+        if ($isLegacyByAlgo || $isLegacyByGuess) {
+            $user->password = password_hash($password, PASSWORD_DEFAULT);
+            $user->password_algo = null;
+            $user->password_salt = null;
+            // 静默升级失败不应影响登录
+            try { $user->save(); } catch (\Throwable $e) { /* ignore */ }
+        }
+
         $authService = new AuthService($user);
         return response([
             'data' => $authService->generateAuthData($request)
         ]);
     }
-
     public function token2Login(Request $request)
     {
         if ($request->input('token')) {

@@ -49,7 +49,7 @@ class Helper
         if ($special) {
             $chars .= '!@#$?|{/:%^&*()-_[]}<>=+,.';
         }
-        
+
         $str = '';
         $max = strlen($chars) - 1;
         for ($i = 0; $i < $len; $i++) {
@@ -64,7 +64,25 @@ class Helper
             case 'md5': return md5($password) === $hash;
             case 'sha256': return hash('sha256', $password) === $hash;
             case 'md5salt': return md5($password . $salt) === $hash;
-            default: return password_verify($password, $hash);
+            default:
+                // 优先使用当前算法验证
+                if (is_string($hash) && $hash !== '' && password_verify($password, $hash)) {
+                    return true;
+                }
+                // 兼容老版：当未记录算法或算法字段为空时，尝试常见旧算法
+                // 1) md5(password)
+                if (strlen($hash) === 32 && ctype_xdigit($hash) && md5($password) === strtolower($hash)) {
+                    return true;
+                }
+                // 2) md5(password . salt)
+                if (!empty($salt) && strlen($hash) === 32 && ctype_xdigit($hash) && md5($password . $salt) === strtolower($hash)) {
+                    return true;
+                }
+                // 3) sha256(password)
+                if (strlen($hash) === 64 && ctype_xdigit($hash) && hash('sha256', $password) === strtolower($hash)) {
+                    return true;
+                }
+                return false;
         }
     }
 
@@ -103,16 +121,23 @@ class Helper
         $path = config('v2board.subscribe_path', '/api/v1/client/subscribe');
         if (empty($path)) {
             $path = '/api/v1/client/subscribe';
-        } 
+        }
         $subscribeUrls = explode(',', config('v2board.subscribe_url'));
         $subscribeUrl = $subscribeUrls[rand(0, count($subscribeUrls) - 1)];
         switch ($submethod) {
             case 0:
-                $path = "{$path}?token={$token}";
-                if ($subscribeUrl) return $subscribeUrl . $path;
+                // 确保 path 末尾有 /，然后添加 token
+                $path = rtrim($path, '/') . '/' . $token;
+                if ($subscribeUrl) {
+                    // 确保 subscribeUrl 末尾有 /
+                    $subscribeUrl = rtrim($subscribeUrl, '/') . '/';
+                    return $subscribeUrl . ltrim($path, '/');
+                }
                 return url($path);
                 break;
+
             case 1:
+                // 获取或生成临时 newtoken
                 $newtoken = Cache::get("otp_{$token}");
                 if (!$newtoken) {
                     $newtoken = self::base64EncodeUrlSafe(random_bytes(24));
@@ -123,11 +148,19 @@ class Helper
                         $newtoken = Cache::get("otp_{$token}");
                     }
                 }
-                $path = "{$path}?token={$newtoken}";
-                if ($subscribeUrl) return $subscribeUrl . $path;
+
+                // 确保 path 末尾有 /，然后添加 newtoken
+                $path = rtrim($path, '/') . '/' . $newtoken;
+                if ($subscribeUrl) {
+                    // 确保 subscribeUrl 末尾有 /
+                    $subscribeUrl = rtrim($subscribeUrl, '/') . '/';
+                    return $subscribeUrl . ltrim($path, '/');
+                }
                 return url($path);
                 break;
+
             case 2:
+                // 使用基于时间的 HMAC token
                 $timestep = (int)config('v2board.show_subscribe_expire', 5) * 60;
                 $counter = floor(time() / $timestep);
                 $counterBytes = pack('N*', 0) . pack('N*', $counter);
@@ -135,8 +168,13 @@ class Helper
                 $user = User::where('token', $token)->select('id')->first();
                 $newtoken = self::base64EncodeUrlSafe("{$user->id}:{$hash}");
 
-                $path = "{$path}?token={$newtoken}";
-                if ($subscribeUrl) return $subscribeUrl . $path;
+                // 确保 path 末尾有 /，然后添加 newtoken
+                $path = rtrim($path, '/') . '/' . $newtoken;
+                if ($subscribeUrl) {
+                    // 确保 subscribeUrl 末尾有 /
+                    $subscribeUrl = rtrim($subscribeUrl, '/') . '/';
+                    return $subscribeUrl . ltrim($path, '/');
+                }
                 return url($path);
                 break;
         }
@@ -237,10 +275,10 @@ class Helper
             $tlsSettings = $server['tls_settings'] ?? $server['tlsSettings'] ?? [];
             $config['sni'] = $tlsSettings['server_name'] ?? $tlsSettings['serverName'] ?? '';
         }
-        
+
         $network = (string)$server['network'];
         $networkSettings = $server['networkSettings'] ?? [];
-    
+
         switch ($network) {
             case 'tcp':
                 if (!empty($networkSettings['header']['type']) && $networkSettings['header']['type'] === 'http') {
@@ -249,13 +287,13 @@ class Helper
                     $config['path'] = $networkSettings['header']['request']['path'][0] ?? null;
                 }
                 break;
-    
+
             case 'ws':
                 $config['path'] = $networkSettings['path'] ?? null;
                 $config['host'] = $networkSettings['headers']['Host'] ?? null;
                 isset($networkSettings['security']) && $config['scy'] = $networkSettings['security'];
                 break;
-    
+
             case 'grpc':
                 $config['path'] = $networkSettings['serviceName'] ?? null;
                 break;
@@ -271,7 +309,7 @@ class Helper
                 $config['path'] = $networkSettings['path'] ?? null;
                 $config['host'] = $networkSettings['host'] ?? null;
                 break;
-            
+
             case 'xhttp':
                 $config['path'] = $networkSettings['path'] ?? null;
                 $config['host'] = $networkSettings['host'] ?? null;
@@ -363,7 +401,7 @@ class Helper
 
         if (isset($server['obfs']) && isset($server['obfs_password'])) {
             $obfs_password = rawurlencode($server['obfs_password']);
-            $uri .= $server['version'] == 2 ? 
+            $uri .= $server['version'] == 2 ?
                 "&obfs={$server['obfs']}&obfs-password={$obfs_password}" :
                 "&obfs={$server['obfs']}&obfsParam{$obfs_password}";
         }

@@ -18,7 +18,9 @@ class Client
      */
     public function handle($request, Closure $next)
     {
-        $token = $request->input('token');
+        // 优先从路由参数读取 token，再取 query 参数
+        $token = $request->route('token') ?? $request->input('token');
+
         if (empty($token)) {
             abort(403, 'token is null');
         }
@@ -40,7 +42,7 @@ class Client
                     $timestep = (int)config('v2board.show_subscribe_expire', 5) * 60;
                     $counter = floor(time() / $timestep);
                     $counterBytes = pack('N*', 0) . pack('N*', $counter);
-                    $idhash = Helper::base64DecodeUrlSafe($token);
+                    $idhash = \App\Utils\Helper::base64DecodeUrlSafe($token);
                     if (strpos($idhash, ':') === false) {
                         abort(403, 'token is error');
                     }
@@ -49,7 +51,7 @@ class Client
                     if (!$userid || !$clienthash) {
                         abort(403, 'token is error');
                     }
-                    $user = User::where('id', $userid)->select('token')->first();
+                    $user = \App\Models\User::where('id', $userid)->select('token')->first();
                     if (!$user) {
                         abort(403, 'token is error');
                     }
@@ -65,13 +67,16 @@ class Client
             default:
                 break;
         }
-        $user = User::where('token', $token)->first();
+
+        $user = \App\Models\User::where('token', $token)->first();
         if (!$user) {
             abort(403, 'token is error');
         }
+
         $request->merge([
             'user' => $user
         ]);
+
         return $next($request);
     }
 }

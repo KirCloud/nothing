@@ -14,18 +14,32 @@ use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
-    public function subscribe(Request $request)
+    public function subscribe(Request $request,$token = null)
     {
-        $flag = $request->input('flag')
-            ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
+        $token = $token ?? $request->input('token');
+        if (!$token) {
+            return response()->json(['message' => 'token is null'], 400);
+        }
+
+        // 用户标识（客户端类型判断）
+        $flag = $request->input('flag') ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
         $flag = strtolower($flag);
-        $user = $request->user;
-        // account not expired and is not banned.
-        $userService = new UserService();
+
+        // 尝试通过 token 获取用户
+        $user = \App\Models\User::where('token', $token)->first();
+        if (!$user) {
+            return response()->json(['error' => 'Invalid token'], 401);
+        }
+
+        // 检查账号状态（未过期且未封禁）
+        $userService = new \App\Services\UserService();
         if ($userService->isAvailable($user)) {
-            $serverService = new ServerService();
+            $serverService = new \App\Services\ServerService();
             $servers = $serverService->getAvailableServers($user);
-            if($flag) {
+
+            // 按不同客户端类型输出不同格式
+            if ($flag) {
+                // 非 sing-box 客户端
                 if (!strpos($flag, 'sing')) {
                     $this->setSubscribeInfoToServers($servers, $user);
                     foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
@@ -36,24 +50,30 @@ class ClientController extends Controller
                         }
                     }
                 }
+
+                // sing-box 客户端逻辑
                 if (strpos($flag, 'sing') !== false) {
                     $version = null;
                     if (preg_match('/sing-box\s+([0-9.]+)/i', $flag, $matches)) {
                         $version = $matches[1];
                     }
                     if (!is_null($version) && $version >= '1.12.0') {
-                        $class = new Singbox($user, $servers);
+                        $class = new \App\Protocols\Singbox($user, $servers);
                     } else {
-                        $class = new SingboxOld($user, $servers);
+                        $class = new \App\Protocols\SingboxOld($user, $servers);
                     }
                     return $class->handle();
                 }
             }
-            $class = new General($user, $servers);
+
+            // 默认协议处理
+            $class = new \App\Protocols\General($user, $servers);
             return $class->handle();
         }
-    }
 
+        // 用户不可用时返回错误
+        return response()->json(['error' => 'User not available'], 403);
+    }
     private function setSubscribeInfoToServers(&$servers, $user)
     {
         if (!isset($servers[0])) return;
