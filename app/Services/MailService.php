@@ -57,7 +57,7 @@ class MailService
         if ($percentage >= 100) return false;
         return true;
     }
-    
+
     /**
  * 发送营销邮件给单个用户
  * @param User $user
@@ -73,7 +73,7 @@ public function sendMarketingEmail(User $user)
     // 检查发送限制
     $userLimit = config('v2board.marketing_email_user_limit', 2);
     $timeLimit = config('v2board.marketing_email_time_limit', 30);
-    
+
     $recentMarketingEmails = MailLog::where('email', $user->email)
         ->where('template_name', 'like', '%marketing%')
         ->where('created_at', '>', now()->subDays($timeLimit))
@@ -117,7 +117,14 @@ public function getPendingMarketingUsersCount()
         $timeLimit = config('v2board.marketing_email_time_limit', 30);
         $userLimit = config('v2board.marketing_email_user_limit', 2);
 
-        $expiredUsers = User::where('expired_at', '<', time()) // Only truly expired users
+        // 当前时间戳
+        $now = time();
+
+        // 限制条件：过期超过3天的用户
+        $expiredThreshold = $now - (3 * 24 * 60 * 60); // 当前时间 - 3天（单位秒）
+
+        // 获取所有过期超过3天、且未封禁的用户
+        $expiredUsers = User::where('expired_at', '<', $expiredThreshold)
             ->where('banned', 0)
             ->get();
 
