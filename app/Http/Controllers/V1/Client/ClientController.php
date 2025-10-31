@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
-    public function subscribe(Request $request)
+    public function subscribe(Request $request,$token = null)
     {
         $token = $token ?? $request->input('token');
         if (!$token) {
@@ -24,9 +24,15 @@ class ClientController extends Controller
         // 用户标识（客户端类型判断）
         $flag = $request->input('flag') ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
         $flag = strtolower($flag);
-        $user = $request->user;
-        // account not expired and is not banned.
-        $userService = new UserService();
+
+        // 尝试通过 token 获取用户
+        $user = \App\Models\User::where('token', $token)->first();
+        if (!$user) {
+            return response()->json(['error' => 'Invalid token'], 401);
+        }
+
+        // 检查账号状态（未过期且未封禁）
+        $userService = new \App\Services\UserService();
         if ($userService->isAvailable($user)) {
             $serverService = new ServerService();
             $servers = $serverService->getAvailableServers($user);
