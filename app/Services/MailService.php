@@ -121,10 +121,15 @@ public function getPendingMarketingUsersCount()
         $now = time();
 
         // 限制条件：过期超过3天的用户
+<<<<<<< HEAD
         $expiredThreshold = $now - (7 * 24 * 60 * 60); // 当前时间 - 3天（单位秒）
+=======
+        $expiredThreshold = $now - (7 * 24 * 60 * 60); // 当前时间 - 7天（单位秒）
+>>>>>>> a8d681a5ada67b01aefe5773df18ccb0c90ec390
 
         // 获取所有过期超过3天、且未封禁的用户
         $expiredUsers = User::where('expired_at', '<', $expiredThreshold)
+            ->where('expired_at', '!=', 0)
             ->where('banned', 0)
             ->get();
 

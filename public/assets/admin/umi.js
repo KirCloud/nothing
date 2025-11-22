@@ -100722,6 +100722,7 @@
             routeActionText: {
                 block: "\u7981\u6b62\u8bbf\u95ee(\u57df\u540d\u76ee\u6807)",
                 block_ip: "\u7981\u6b62\u8bbf\u95ee(IP\u76ee\u6807)",
+                block_port: "\u7981\u6b62\u8bbf\u95ee(\u7aef\u53e3\u76ee\u6807)",
                 protocol: "\u7981\u6b62\u8bbf\u95ee(\u534f\u8bae)",
                 dns: "\u6307\u5b9aDNS\u670d\u52a1\u5668\u8fdb\u884c\u89e3\u6790",
                 route: "\u6307\u5b9a\u51fa\u7ad9\u670d\u52a1\u5668(\u57df\u540d\u76ee\u6807)",
@@ -104716,13 +104717,13 @@
                     value: e.dns_env,
                     onChange: e=>this.change("dns_env", e.target.value),
                     placeholder: "\u4e66\u5199\u683c\u5f0fCF_DNS_API_TOKEN=xxxxxxx\u5982\u6709\u591a\u6761\u4f7f\u7528\u9017\u53f7\u002c\u5206\u9694"
-                })), e.cert_mode != "none" && cert_apply && y.a.createElement("div", {
+                })), tls == 1 && e.cert_mode != "none" && cert_apply && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "\u8bc1\u4e66\u516c\u94a5\u6587\u4ef6\u5730\u5740Cert File Path"), y.a.createElement(s["a"], {
                     value: e.cert_file,
                     onChange: e=>this.change("cert_file", e.target.value),
                     placeholder: "\u7559\u7a7a\u5728/etc/v2node/\u76ee\u5f55\u81ea\u52a8\u751f\u6210"
-                })), e.cert_mode != "none" && cert_apply && y.a.createElement("div", {
+                })), tls == 1 && e.cert_mode != "none" && cert_apply && y.a.createElement("div", {
                     className: "form-group"
                 }, y.a.createElement("label", null, "\u8bc1\u4e66\u79c1\u94a5\u6587\u4ef6\u5730\u5740Key File Path"), y.a.createElement(s["a"], {
                     value: e.key_file,
@@ -111208,6 +111209,9 @@
                         if (action === "protocol") {
                             return "http\ntls\nquic\nbittorrent";
                         }
+                        if (action === "block_port") {
+                            return "53\n443\n1000-2000";
+                        }
                         if (["route_ip", "block_ip"].includes(action)) {
                             return "127.0.0.1(\u5355\u4e00\u5339\u914d)\n10.0.0.0/8(\u8303\u56f4\u5339\u914d)\ngeoip:cn(\u9884\u5b9a\u4e49\u5217\u8868\u5339\u914d)";
                         }
@@ -111242,6 +111246,8 @@
                 }, b["a"].routeActionText["block"]), f.a.createElement(v["a"].Option, {
                     value: "block_ip"
                 }, b["a"].routeActionText["block_ip"]), f.a.createElement(v["a"].Option, {
+                    value: "block_port"
+                }, b["a"].routeActionText["block_port"]), f.a.createElement(v["a"].Option, {
                     value: "protocol"
                 }, b["a"].routeActionText["protocol"]), f.a.createElement(v["a"].Option, {
                     value: "dns"
