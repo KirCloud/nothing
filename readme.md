@@ -4,7 +4,7 @@
 
 ## 本分支支持的后端
  - [修改版V2bX](https://github.com/wyx2685/V2bX)
-
+ - [v2node](https://github.com/wyx2685/v2node)
 
 ## 原版迁移步骤
 
@@ -31,11 +31,6 @@
 - MySQL5.5+
 - Redis
 - Laravel
-
-## Demo
-[Demo_user](https://v2bdemo.v-50.me/)
-[Demo_admin](https://v2bdemo.v-50.me/admindashboard)
-邮箱和密码可随意输入
 
 ## Document
 [Click](https://v2board.com)

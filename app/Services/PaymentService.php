@@ -18,7 +18,7 @@ class PaymentService
         $this->class = '\\App\\Payments\\' . $this->method;
         if (!class_exists($this->class)) abort(500, 'gate is not found');
         if ($id) $payment = Payment::find($id)->toArray();
-        if ($uuid) $payment = Payment::where('uuid', $uuid)->first()->toArray();
+        if ($uuid) $payment = Payment::where('uuid', $uuid)->where('payment', $method)->first()->toArray();
         $this->config = [];
         if (isset($payment)) {
             $this->config = $payment['config'];
@@ -44,9 +44,9 @@ class PaymentService
             $parseUrl = parse_url($notifyUrl);
             $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
         }
-        if ($_SERVER['HTTP_ORIGIN']) {
-            // ez-theme
-            $returnUrl = $_SERVER['HTTP_ORIGIN'] . '/#/payment?trade_no=' . $order['trade_no'];
+        $currentBase = $this->currentBase();
+        if ($currentBase) { 
+            $returnUrl = $currentBase . '/#/order/' . $order['trade_no'];
         } else {
             $returnUrl = url('/#/order/' . $order['trade_no']);
         }
@@ -68,5 +68,30 @@ class PaymentService
             if (isset($this->config[$key])) $form[$key]['value'] = $this->config[$key];
         }
         return $form;
+    }
+
+    private function currentBase()
+    {
+        $origin = request()->header('Origin');
+
+        if ($origin && preg_match('#^https?://[A-Za-z0-9.\-:\[\]]+$#i', $origin)) {
+            return rtrim($origin, '/');
+        }
+
+        $host = request()->header('X-Forwarded-Host')
+            ?: request()->header('X-Original-Host')
+            ?: request()->header('Host');
+
+        if ($host) {
+            $host = trim(explode(',', $host)[0]);
+
+            if (preg_match('/^[A-Za-z0-9.\-:\[\]]+$/', $host)) {
+                $scheme = request()->header('X-Forwarded-Proto')
+                    ?: (request()->secure() ? 'https' : 'http');
+                return $scheme . '://' . $host;
+            }
+        }
+
+        return '';
     }
 }
