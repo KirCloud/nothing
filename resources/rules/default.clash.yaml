@@ -10,40 +10,18 @@ log-level: info
 external-controller: 127.0.0.1:9090
 
 dns:
-  enable: true
-  # listen: 0.0.0.0:53
-  ipv6: false
-
-  default-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.114
-  enhanced-mode: fake-ip
-  fake-ip-range: 198.18.0.1/16
-  use-hosts: true
-  respect-rules: true
-  proxy-server-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.114
-  nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.114
-  fallback:
-    - 1.1.1.1
-    - 8.8.8.8
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
-    geosite:
-      - gfw
-    ipcidr:
-      - 240.0.0.0/4
-    domain:
-      - '+.google.com'
-      - '+.facebook.com'
-      - '+.youtube.com'
+    enable: true
+    ipv6: false
+    enhanced-mode: fake-ip
+    fake-ip-range: 198.18.0.1/16
+    use-hosts: true
+    respect-rules: true
+    default-nameserver: [tls://223.5.5.5, tls://1.12.12.12]
+    proxy-server-nameserver: [tls://223.5.5.5, tls://1.12.12.12]
+    nameserver: [https://1.1.1.1/dns-query, https://8.8.8.8/dns-query]
+    nameserver-policy:
+        'geosite:cn': [tls://223.5.5.5, tls://1.12.12.12]
+        'geosite:private': [tls://223.5.5.5]
 
 
 proxies:

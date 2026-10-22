@@ -232,20 +232,32 @@ class Helper
 
     public static function buildShadowsocksUri($uuid, $server)
     {
+        // 确保必要字段存在
+        if (!isset($server['cipher']) || !isset($server['host']) || !isset($server['port']) || !isset($server['name'])) {
+            return '';
+        }
+
         $cipher = $server['cipher'];
-        if (strpos($cipher, '2022-blake3') !== false) {
+
+        // 如果服务器有自定义密码，使用它；否则根据 cipher 类型决定
+        if (isset($server['password']) && !empty($server['password'])) {
+            $password = $server['password'];
+        } else if (strpos($cipher, '2022-blake3') !== false) {
             $length = $cipher === '2022-blake3-aes-128-gcm' ? 16 : 32;
-            $serverKey = Helper::getServerKey($server['created_at'], $length);
+            $serverKey = Helper::getServerKey($server['created_at'] ?? time(), $length);
             $userKey = Helper::uuidToBase64($uuid, $length);
             $password = "{$serverKey}:{$userKey}";
         } else {
             $password = $uuid;
         }
+
         $name = rawurlencode($server['name']);
         $str = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode("{$cipher}:{$password}"));
         $add = self::formatHost($server['host']);
         $uri = "ss://{$str}@{$add}:{$server['port']}";
-        if ($server['obfs'] == 'http') {
+
+        // 安全地检查 obfs 字段
+        if (isset($server['obfs']) && $server['obfs'] == 'http') {
             $uri .= "?plugin=obfs-local;obfs=http;obfs-host={$server['obfs-host']};path={$server['obfs-path']}";
         } else if ((($server['network'] ?? null) == 'http') && isset($server['network_settings']['Host'])) {
             $path = $server['network_settings']['path'] ?? '/';
@@ -280,6 +292,8 @@ class Helper
 
         $network = (string)$server['network'];
         $networkSettings = $server['networkSettings'] ?? ($server['network_settings'] ?? []);
+
+        $networkSettings = $server['networkSettings'] ?? [];
 
         switch ($network) {
             case 'tcp':
