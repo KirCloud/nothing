@@ -67,8 +67,10 @@ class Client
             default:
                 break;
         }
-
-        $user = \App\Models\User::where('token', $token)->first();
+        if (!is_string($token)) {
+            abort(403, 'token is error');
+        }
+        $user = User::where('token', $token)->first();
         if (!$user) {
             abort(403, 'token is error');
         }
