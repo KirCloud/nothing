@@ -102,6 +102,74 @@ Cache::put(CacheKey::get('EMAIL_VERIFY_CODE', $email), '012345', 600);
 check($status !== 200 && Cache::has(CacheKey::get('EMAIL_VERIFY_CODE', $email)), '65-character reset password is refused without consuming the code');
 [$status] = api('POST', 'passport/auth/forget', ['email' => $email, 'password' => $password, 'email_code' => '012345']);
 check($status === 200 && !Cache::has(CacheKey::get('EMAIL_VERIFY_CODE', $email)), 'Reset accepts the six-digit string code and consumes it');
+
+// Exercise the new passport rules through HTTP and a real accent-insensitive database.
+$longEmail = str_repeat('e', 44) . $suffix . '@example.com';
+Cache::put(CacheKey::get('EMAIL_VERIFY_CODE', $longEmail), '012345', 600);
+[$status] = api('POST', 'passport/auth/register', ['email' => $longEmail, 'password' => $password, 'email_code' => '012345']);
+check($status === 200, 'Registration accepts a 64-character ASCII email');
+foreach (['homograph-' . $suffix . '@gmáil.com', 'e' . $longEmail] as $badEmail) {
+    [$status] = api('POST', 'passport/auth/register', ['email' => $badEmail, 'password' => $password, 'email_code' => '012345']);
+    check($status === 422, 'Registration rejects a non-ASCII or overlong email before storing it');
+    [$status] = api('POST', 'passport/comm/sendEmailVerify', ['email' => $badEmail]);
+    check($status === 422, 'Verification email endpoint rejects the same invalid email');
+    [$status] = api('POST', 'passport/auth/forget', ['email' => $badEmail, 'password' => $password, 'email_code' => '012345']);
+    check($status === 422, 'Password reset rejects the same invalid email');
+}
+$legacy = new User();
+$legacy->email = "legacy-$suffix@gmáil.example";
+$legacy->password = password_hash($password, PASSWORD_DEFAULT);
+$legacy->uuid = Helper::guid(true); $legacy->token = Helper::guid(); $legacy->save();
+$asciiAlias = "legacy-$suffix@gmail.example";
+check(User::where('email', $asciiAlias)->first()->id === $legacy->id, 'Local database reproduces the accent-insensitive email collision');
+$oldHash = $legacy->password;
+Cache::put(CacheKey::get('EMAIL_VERIFY_CODE', $asciiAlias), '012345', 600);
+[$status] = api('POST', 'passport/auth/forget', ['email' => $asciiAlias, 'password' => 'DifferentPassword123', 'email_code' => '012345']);
+check($status === 500 && $legacy->fresh()->password === $oldHash, 'ASCII alias cannot reset a different stored email through collation folding');
+[$status] = api('GET', 'client/subscribe', ['token' => [$user->token]]);
+check($status === 403, 'Array-valued subscription token is rejected');
+
+// Hold the row so both HTTP workers read the same initial balance before UPDATE.
+// PROCESS is granted only to the disposable local test user for observing lock waits.
+// A successful password reset revokes the earlier session, so authenticate again.
+[$status, $body] = api('POST', 'passport/auth/login', ['email' => $email, 'password' => $password]);
+check($status === 200 && isset($body['data']['auth_data']), 'Fresh login succeeds after password reset revokes the old session');
+$token = $body['data']['auth_data'];
+$user->refresh(); $user->commission_balance = 1000; $user->save();
+$startingBalance = $user->balance;
+$startingOrders = Order::where('user_id', $user->id)->count();
+$multi = new GuzzleHttp\Handler\CurlMultiHandler(['select_timeout' => 0.1]);
+$parallel = new GuzzleHttp\Client(['base_uri' => 'http://127.0.0.1:18080/api/v1/', 'handler' => GuzzleHttp\HandlerStack::create($multi), 'http_errors' => false, 'timeout' => 15]);
+Illuminate\Support\Facades\DB::beginTransaction();
+$requests = [];
+try {
+    Illuminate\Support\Facades\DB::table('v2_user')->where('id', $user->id)->lockForUpdate()->first();
+    for ($i = 0; $i < 2; $i++) {
+        $requests[] = $parallel->postAsync('user/transfer', [
+            'headers' => ['Accept' => 'application/json', 'Authorization' => $token],
+            'form_params' => ['transfer_amount' => 1000],
+        ]);
+    }
+    $deadline = microtime(true) + 8;
+    do {
+        $multi->tick();
+        $waits = Illuminate\Support\Facades\DB::select("SELECT COUNT(*) AS n FROM information_schema.INNODB_TRX WHERE trx_state = 'LOCK WAIT' AND LOWER(trx_query) LIKE 'update `v2_user`%'")[0]->n;
+        if ($waits >= 2) break;
+        usleep(50000);
+    } while (microtime(true) < $deadline);
+    check($waits >= 2, 'Two concurrent transfers reach the locked user row');
+    Illuminate\Support\Facades\DB::table('v2_user')->where('id', $user->id)->increment('balance', 37);
+    Illuminate\Support\Facades\DB::commit();
+} finally {
+    if (Illuminate\Support\Facades\DB::transactionLevel()) Illuminate\Support\Facades\DB::rollBack();
+}
+$responses = GuzzleHttp\Promise\Utils::unwrap($requests);
+$statuses = array_map(function ($r) { return $r->getStatusCode(); }, $responses); sort($statuses);
+check($statuses === [200, 500], 'Only one concurrent transfer spends the available commission');
+$user->refresh();
+check($user->commission_balance === 0 && $user->balance === $startingBalance + 1000 + 37, 'Commission transfer preserves the concurrent wallet credit and cannot overspend');
+check(Order::where('user_id', $user->id)->count() === $startingOrders + 1, 'Concurrent commission transfer creates exactly one ledger order');
+
 $fixture = ['email' => $email, 'password' => $password, 'pending_trade' => $pendingTrade, 'paid_trade' => $trade];
 if (isset($argv[1])) file_put_contents($argv[1], json_encode($fixture));
 echo json_encode(['passed' => count($checks), 'checks' => $checks], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
