@@ -40,8 +40,18 @@ class SocialLoginService
         ];
     }
 
+    public static function appCallback(): ?string
+    {
+        $scheme = config('services.login.app_scheme');
+        $valid = is_string($scheme) && preg_match('/^[a-z][a-z0-9+.-]*$/D', $scheme)
+            && !in_array($scheme, ['http', 'https', 'javascript', 'data', 'file'], true);
+        return $valid ? $scheme . '://oauth-callback' : null;
+    }
+
     public function frontendCallback($requested = null): string
     {
+        // A native client names its own deep link; only the configured scheme is ever redirected to.
+        if ($requested !== null && $requested === self::appCallback()) return $requested;
         $frontend = self::frontendUrl();
         abort_unless(is_string($frontend) && filter_var($frontend, FILTER_VALIDATE_URL)
             && in_array(parse_url($frontend, PHP_URL_SCHEME), ['https', 'http'], true)

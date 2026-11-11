@@ -268,6 +268,44 @@ class SocialLoginTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function testNativeAppSignInReturnsToTheConfiguredSchemeOnly(): void
+    {
+        $user = $this->user();
+        $this->mockGoogle([]);
+        $start = ['type' => 'google', 'state' => $this->clientState, 'redirect' => 'kirssr://oauth-callback'];
+        $this->postJson('/api/v1/passport/oauth/auth', $start)->assertStatus(422);
+        $this->get('/api/v1/passport/oauth/app?' . http_build_query(['state' => $this->clientState, 'ticket' => $this->clientState]))
+            ->assertNotFound();
+        config(['services.login.app_scheme' => 'kirssr']);
+        $this->postJson('/api/v1/passport/oauth/auth', array_merge($start, ['redirect' => 'other://oauth-callback']))->assertStatus(422);
+        parse_str(parse_url($this->postJson('/api/v1/passport/oauth/auth', $start)->assertOk()->json('data.url'), PHP_URL_QUERY), $google);
+        $location = $this->get('/api/v1/passport/oauth/google/callback?' . http_build_query(['state' => $google['state'], 'code' => 'synthetic-code']))
+            ->assertRedirect()->headers->get('Location');
+        $this->assertStringStartsWith('kirssr://oauth-callback?', $location);
+        parse_str(parse_url($location, PHP_URL_QUERY), $query);
+        $this->postJson('/api/v1/passport/oauth/exchange', $query)->assertOk()->assertJsonPath('data.token', $user->token);
+    }
+
+    public function testNativeAppMailLinkBridgesThroughHttpsToTheAppScheme(): void
+    {
+        $user = $this->user();
+        config(['services.login.app_scheme' => 'kirssr']);
+        $this->postJson('/api/v1/passport/auth/loginWithMailLink', [
+            'email' => 'existing@gmail.com', 'state' => $this->clientState, 'redirect' => 'kirssr://oauth-callback',
+        ])->assertOk();
+        Bus::assertDispatched(SendEmailJob::class, function ($job) use ($user) {
+            $property = new \ReflectionProperty($job, 'params');
+            $property->setAccessible(true);
+            $link = $property->getValue($job)['template_value']['link'];
+            $this->assertStringContainsString('/api/v1/passport/oauth/app?', $link);
+            $location = $this->get($link)->assertRedirect()->headers->get('Location');
+            $this->assertStringStartsWith('kirssr://oauth-callback?', $location);
+            parse_str(parse_url($location, PHP_URL_QUERY), $query);
+            $this->postJson('/api/v1/passport/oauth/exchange', $query)->assertOk()->assertJsonPath('data.token', $user->token);
+            return true;
+        });
+    }
+
     public function testTelegramRequiresABoundAccountAndTheOriginalClientState(): void
     {
         $user = $this->user(['telegram_id' => 123456]);

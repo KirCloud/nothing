@@ -10,6 +10,7 @@ return [
 
     'login' => [
         'frontend_url' => env('OAUTH_FRONTEND_URL'),
+        'app_scheme' => env('OAUTH_APP_SCHEME'),
         'telegram_enabled' => env('TELEGRAM_LOGIN_ENABLED', false),
         'telegram_bot_name' => env('TELEGRAM_BOT_USERNAME'),
         'mail_link_enabled' => env('MAIL_LINK_LOGIN_ENABLED', false),

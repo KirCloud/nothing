@@ -84,6 +84,18 @@ class OAuthController extends Controller
         });
     }
 
+    public function appCallback(Request $request)
+    {
+        // Mail clients drop custom-scheme links, so a mailed app sign-in link lands here over HTTPS first.
+        $app = SocialLoginService::appCallback();
+        abort_unless($app, 404);
+        $query = $request->validate([
+            'state' => 'required|string|regex:/^[a-f0-9]{64}$/D', 'ticket' => 'required|string|regex:/^[a-f0-9]{64}$/D',
+        ]);
+        return redirect()->away($app . '?' . http_build_query($query))
+            ->header('Referrer-Policy', 'no-referrer')->header('Cache-Control', 'no-store');
+    }
+
     public function exchange(Request $request, SocialLoginService $login)
     {
         $data = $request->validate([
@@ -137,7 +149,8 @@ class OAuthController extends Controller
                 'template_name' => 'mailLogin',
                 'template_value' => [
                     'name' => config('v2board.app_name', 'V2Board'), 'url' => config('v2board.app_url'),
-                    'link' => $frontend . '?' . http_build_query(['ticket' => $ticket, 'state' => $data['state']]),
+                    'link' => ($frontend === SocialLoginService::appCallback() ? url('/api/v1/passport/oauth/app') : $frontend)
+                        . '?' . http_build_query(['ticket' => $ticket, 'state' => $data['state']]),
                 ],
             ]);
         }
