@@ -30,7 +30,7 @@ class OAuthController extends Controller
             'invite_code' => $data['code'] ?? '', 'verifier' => $verifier,
         ]);
         $url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
-            'client_id' => config('services.google.client_id'),
+            'client_id' => SocialLoginService::googleClientId(),
             'redirect_uri' => $login->googleCallback(),
             'response_type' => 'code', 'scope' => 'openid email profile',
             'state' => $state, 'prompt' => 'select_account',

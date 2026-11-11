@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Jobs\SendEmailJob;
 use App\Services\TelegramService;
+use App\Services\SocialLoginService;
 use App\Utils\Dict;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -69,6 +70,13 @@ class ConfigController extends Controller
     {
         $key = $request->input('key');
         $data = [
+            'google' => [
+                'google_oauth_enable' => (int)SocialLoginService::googleEnabled(),
+                'google_client_id' => SocialLoginService::googleClientId(),
+                'google_client_secret_configured' => (bool)SocialLoginService::googleClientSecret(),
+                'google_redirect_uri' => (new SocialLoginService())->googleCallback(),
+                'oauth_frontend_url' => SocialLoginService::frontendUrl(),
+            ],
             'ticket' => [
                 'ticket_status' => config('v2board.ticket_status', 0)
             ],
@@ -190,6 +198,10 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        // A blank password field keeps the saved secret, including an .env fallback.
+        if (empty($data['google_client_secret'])) {
+            unset($data['google_client_secret']);
+        }
         $config = config('v2board');
         foreach (ConfigSave::RULES as $k => $v) {
             if (!in_array($k, array_keys(ConfigSave::RULES))) {

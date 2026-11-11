@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -71,6 +73,94 @@ class SocialLoginTest extends TestCase
             'token' => bin2hex(random_bytes(16))], $attributes));
     }
 
+    private function adminConfigUrl(string $action = 'fetch'): string
+    {
+        foreach ($this->app['router']->getRoutes() as $route) {
+            if (substr($route->getActionName(), -strlen('ConfigController@' . $action)) === 'ConfigController@' . $action) {
+                return '/' . $route->uri();
+            }
+        }
+        $this->fail('Admin config route not found');
+    }
+
+    private function adminHeaders(bool $admin = true): array
+    {
+        $user = $this->user(['is_admin' => $admin ? 1 : 0, 'email' => $admin ? 'admin@example.com' : 'member@example.com']);
+        $auth = (new AuthService($user))->generateAuthData(\Illuminate\Http\Request::create('/'));
+        return ['Authorization' => $auth['auth_data']];
+    }
+
+    public function testGoogleSettingsRequireAnAdminAndNeverReturnTheSecret(): void
+    {
+        config(['v2board.google_client_id' => 'panel-client', 'v2board.google_client_secret' => 'panel-secret',
+            'v2board.google_oauth_enable' => 0]);
+        $this->getJson($this->adminConfigUrl() . '?key=google')->assertForbidden();
+        $this->getJson($this->adminConfigUrl() . '?key=google', $this->adminHeaders(false))->assertForbidden();
+        $response = $this->getJson($this->adminConfigUrl() . '?key=google', $this->adminHeaders())
+            ->assertOk()->assertJsonPath('data.google.google_client_id', 'panel-client')
+            ->assertJsonPath('data.google.google_client_secret_configured', true)
+            ->assertJsonPath('data.google.google_oauth_enable', 0);
+        $this->assertArrayNotHasKey('google_client_secret', $response->json('data.google'));
+        $this->assertStringNotContainsString('panel-secret', $response->getContent());
+        $this->getJson('/api/v1/guest/comm/config')->assertOk()->assertJsonPath('data.auth_providers.google', false)
+            ->assertDontSee('panel-secret')->assertDontSee('test-secret');
+    }
+
+    public function testGoogleSettingsValidateCredentialsAndCallbackUrls(): void
+    {
+        config(['services.google.client_id' => null, 'services.google.client_secret' => null]);
+        $headers = $this->adminHeaders();
+        $this->postJson($this->adminConfigUrl('save'), ['google_oauth_enable' => 1], $headers)
+            ->assertStatus(422)->assertJsonValidationErrors(['google_client_id', 'google_client_secret']);
+        foreach (['https://panel.example.com/#/login', 'https://panel.example.com/?next=evil', 'https://user:password@panel.example.com'] as $url) {
+            $this->postJson($this->adminConfigUrl('save'), ['oauth_frontend_url' => $url], $headers)
+                ->assertStatus(422)->assertJsonValidationErrors('oauth_frontend_url');
+        }
+        $this->postJson($this->adminConfigUrl('save'), ['google_redirect_uri' => 'ftp://api.example.com/callback'], $headers)
+            ->assertStatus(422)->assertJsonValidationErrors('google_redirect_uri');
+    }
+
+    public function testSavingGoogleSettingsRetainsBlankSecretAndOtherPanelSettings(): void
+    {
+        config(['v2board.google_client_secret' => 'saved-secret', 'v2board.server_token' => 'unchanged-node-token']);
+        $saved = null;
+        File::shouldReceive('put')->once()->withArgs(function ($path, $content) use (&$saved) {
+            $this->assertSame(base_path('config/v2board.php'), $path);
+            $temporary = tempnam(sys_get_temp_dir(), 'google-config-test-');
+            try { file_put_contents($temporary, $content); $saved = require $temporary; }
+            finally { unlink($temporary); }
+            return true;
+        })->andReturn(1);
+        Artisan::shouldReceive('call')->once()->with('config:cache')->andReturn(0);
+        $this->postJson($this->adminConfigUrl('save'), [
+            'google_oauth_enable' => 1, 'google_client_id' => 'updated-client', 'google_client_secret' => '',
+            'google_redirect_uri' => 'https://api.example.com/api/v1/passport/oauth/google/callback',
+            'oauth_frontend_url' => 'https://panel.example.com/subdir',
+        ], $this->adminHeaders())->assertOk();
+        $this->assertSame('saved-secret', $saved['google_client_secret']);
+        $this->assertSame('unchanged-node-token', $saved['server_token']);
+        $this->assertSame('updated-client', $saved['google_client_id']);
+        $this->assertSame('https://panel.example.com/subdir', $saved['oauth_frontend_url']);
+    }
+
+    public function testPanelGoogleSettingsOverrideEnvironmentAndCanDisableLogin(): void
+    {
+        config(['v2board.google_client_id' => 'panel-client', 'v2board.google_client_secret' => 'panel-secret',
+            'v2board.google_redirect_uri' => 'https://other-api.example.com/api/v1/passport/oauth/google/callback',
+            'v2board.oauth_frontend_url' => 'https://panel.example.com', 'v2board.google_oauth_enable' => 1]);
+        $this->user(); $this->mockGoogle([]);
+        $state = $this->startGoogle();
+        $this->finishGoogle($state);
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://oauth2.googleapis.com/token'
+                && $request['client_id'] === 'panel-client' && $request['client_secret'] === 'panel-secret'
+                && $request['redirect_uri'] === 'https://other-api.example.com/api/v1/passport/oauth/google/callback';
+        });
+        config(['v2board.google_oauth_enable' => 0]);
+        $this->getJson('/api/v1/guest/comm/config')->assertJsonPath('data.auth_providers.google', false);
+        $this->postJson('/api/v1/passport/oauth/auth', ['type' => 'google', 'state' => $this->clientState])->assertNotFound();
+    }
+
     private function startGoogle(array $data = []): string
     {
         $response = $this->postJson('/api/v1/passport/oauth/auth', array_merge([
@@ -79,7 +169,7 @@ class SocialLoginTest extends TestCase
         ], $data))->assertOk();
         parse_str(parse_url($response->json('data.url'), PHP_URL_QUERY), $query);
         $this->assertSame('S256', $query['code_challenge_method']);
-        $this->assertSame(config('services.google.redirect'), $query['redirect_uri']);
+        $this->assertSame((new SocialLoginService())->googleCallback(), $query['redirect_uri']);
         return $query['state'];
     }
 

@@ -6,13 +6,17 @@
 
 ## Google 登录
 
+推荐在管理后台的 **系统配置 → Google 登录** 中设置。填写 Client ID、Client Secret、Google 回调地址及用户前端地址，然后开启 Google 登录并保存。回调地址必须与 Google Cloud Console 的“已获授权的重定向 URI”完全一致。
+
+后台设置保存在现有 `config/v2board.php`，优先于下述 `.env` 配置。保存时沿用后台原有的配置缓存刷新与 Workerman 重载，无需手动编辑服务器文件。Client Secret 保存后不回显，再次编辑时留空会保留原密钥；关闭开关可以暂停 Google 登录。
+
 先按现有安装或更新流程创建 `v2_oauth_identity` 表。也可单独执行此迁移。
 
 ```sh
 php artisan migrate --path=database/migrations/2026_11_11_000000_create_oauth_identities_table.php --force
 ```
 
-在后端 `.env` 配置以下参数。`OAUTH_FRONTEND_URL` 填用户前端的基础地址，支持带子目录。已有 `v2board.app_url` 正确指向前端时，可省略此项。
+也支持在后端 `.env` 配置以下参数。`OAUTH_FRONTEND_URL` 填用户前端的基础地址，支持带子目录。已有 `v2board.app_url` 正确指向前端时，可省略此项。
 
 ```dotenv
 GOOGLE_CLIENT_ID=your-client-id
@@ -24,6 +28,8 @@ OAUTH_FRONTEND_URL=https://panel.example.com
 在 Google Cloud Console 创建 Web 应用 OAuth 凭据，并把上述 `GOOGLE_REDIRECT_URI` 原样登记为授权重定向 URI。配置完成后执行 `php artisan config:cache`，并重载实际使用的 PHP 常驻进程。
 
 Google 验证邮箱后，新账号沿用本站的注册关闭、邀请码、邮箱白名单、IP 注册频率和试用套餐规则。已有 Gmail 或 Google Workspace 邮箱可自动关联现有账号。已有未关联 Google 身份的第三方邮箱账号使用本站邮箱登录入口。已有 Google 身份记录按 `sub` 查找，邮箱变化后仍可登录原账号。
+
+后台的 Google 设置组件源码为 `public/assets/admin/google-oauth-settings.js` 及同名 CSS，页面由 `resources/views/admin.blade.php` 加载。现有定制后台仅分发构建产物，因此 `scripts/patch-admin-google-tab.cjs` 为其系统配置页面接入一个标签页；更换后台构建后可运行此脚本，组件位置变化时会拒绝修改并提示检查。无需替换整个后台或用户前端。
 
 ## Telegram 登录
 
@@ -59,7 +65,7 @@ CAPTCHA_SECRET_KEY=your-secret-key
 ## 验证
 
 ```sh
-APP_ENV=testing APP_CONFIG_CACHE=bootstrap/cache/social-tests-config.php CACHE_DRIVER=array php vendor/bin/phpunit --no-configuration --bootstrap vendor/autoload.php tests/Feature/SocialLoginTest.php
+APP_ENV=testing APP_CONFIG_CACHE=bootstrap/cache/social-tests-config.php CACHE_DRIVER=array php -d opcache.enable_cli=1 vendor/bin/phpunit --no-configuration --bootstrap vendor/autoload.php tests/Feature/SocialLoginTest.php
 ```
 
-测试使用内存 SQLite、模拟的 Google 和 Cloudflare 响应及邮件队列。覆盖状态校验、回调地址限制、一次性凭证、账号关联、注册规则、Telegram 确认和 Turnstile 服务端失败处理。正式凭据和真实授权需要在部署环境验证。
+测试使用内存 SQLite、模拟的 Google 和 Cloudflare 响应及邮件队列。覆盖状态校验、回调地址限制、一次性凭证、账号关联、注册规则、Telegram 确认、Turnstile 服务端失败处理，以及后台管理员鉴权、密钥不回显、空密钥保留和设置优先级。后台保存测试模拟文件写入及缓存更新，不改动实际站点配置。正式凭据和真实授权需要在部署环境验证。

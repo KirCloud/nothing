@@ -9,11 +9,31 @@ use Illuminate\Support\Facades\Http;
 
 class SocialLoginService
 {
+    public static function googleClientId()
+    {
+        return config('v2board.google_client_id', config('services.google.client_id'));
+    }
+
+    public static function googleClientSecret()
+    {
+        return config('v2board.google_client_secret', config('services.google.client_secret'));
+    }
+
+    public static function googleEnabled(): bool
+    {
+        return (bool)config('v2board.google_oauth_enable', self::googleClientId() && self::googleClientSecret());
+    }
+
+    public static function frontendUrl()
+    {
+        return config('v2board.oauth_frontend_url', config('services.login.frontend_url')) ?: config('v2board.app_url');
+    }
+
     public static function providers(): array
     {
-        $frontend = config('services.login.frontend_url') ?: config('v2board.app_url');
+        $frontend = self::frontendUrl();
         return [
-            'google' => (bool)($frontend && config('services.google.client_id') && config('services.google.client_secret')),
+            'google' => (bool)($frontend && self::googleEnabled() && self::googleClientId() && self::googleClientSecret()),
             'telegram' => (bool)(config('services.login.telegram_enabled') && config('v2board.telegram_bot_enable')
                 && config('v2board.telegram_bot_token') && config('services.login.telegram_bot_name')),
             'email_link' => (bool)($frontend && config('services.login.mail_link_enabled')),
@@ -22,7 +42,7 @@ class SocialLoginService
 
     public function frontendCallback($requested = null): string
     {
-        $frontend = config('services.login.frontend_url') ?: config('v2board.app_url');
+        $frontend = self::frontendUrl();
         abort_unless(is_string($frontend) && filter_var($frontend, FILTER_VALIDATE_URL)
             && in_array(parse_url($frontend, PHP_URL_SCHEME), ['https', 'http'], true)
             && !parse_url($frontend, PHP_URL_QUERY) && !parse_url($frontend, PHP_URL_FRAGMENT)
@@ -70,8 +90,8 @@ class SocialLoginService
     public function googleUser(string $code, string $verifier): array
     {
         $token = Http::asForm()->timeout(15)->post('https://oauth2.googleapis.com/token', [
-            'client_id' => config('services.google.client_id'),
-            'client_secret' => config('services.google.client_secret'),
+            'client_id' => self::googleClientId(),
+            'client_secret' => self::googleClientSecret(),
             'redirect_uri' => $this->googleCallback(),
             'grant_type' => 'authorization_code',
             'code' => $code,
@@ -90,7 +110,7 @@ class SocialLoginService
 
     public function googleCallback(): string
     {
-        return config('services.google.redirect') ?: url('/api/v1/passport/oauth/google/callback');
+        return config('v2board.google_redirect_uri', config('services.google.redirect')) ?: url('/api/v1/passport/oauth/google/callback');
     }
 
     public function approveTelegram(string $code, int $telegramId): void

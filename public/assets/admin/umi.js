@@ -5667,6 +5667,9 @@
                     defaultActiveKey: h,
                     size: "large"
                 }, f.a.createElement(s["a"].TabPane, {
+                    tab: "Google 登录",
+                    key: "google"
+                }, f.a.createElement("google-oauth-settings")), f.a.createElement(s["a"].TabPane, {
                     tab: "\u7ad9\u70b9",
                     key: "site"
                 }, f.a.createElement("div", {

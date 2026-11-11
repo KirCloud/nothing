@@ -7,6 +7,12 @@ use Illuminate\Foundation\Http\FormRequest;
 class ConfigSave extends FormRequest
 {
     const RULES = [
+        // Google OAuth (blank secrets are retained by ConfigController).
+        'google_oauth_enable' => 'in:0,1',
+        'google_client_id' => 'nullable|string|max:512',
+        'google_client_secret' => 'nullable|string|max:2048',
+        'google_redirect_uri' => 'nullable|url|max:2048',
+        'oauth_frontend_url' => 'nullable|url|max:2048',
         // deposit
         'deposit_bounus' => [
             'nullable',
@@ -114,6 +120,19 @@ class ConfigSave extends FormRequest
     {
         $rules = self::RULES;
 
+        foreach (['google_redirect_uri', 'oauth_frontend_url'] as $field) {
+            $rules[$field] = array_merge(explode('|', $rules[$field]), [function ($attribute, $value, $fail) {
+                if ($value === null || $value === '') return;
+                if (!in_array(parse_url($value, PHP_URL_SCHEME), ['http', 'https'], true)
+                    || parse_url($value, PHP_URL_QUERY) !== null
+                    || parse_url($value, PHP_URL_FRAGMENT) !== null
+                    || parse_url($value, PHP_URL_USER) !== null
+                    || parse_url($value, PHP_URL_PASS) !== null) {
+                    $fail('请填写完整的 HTTP(S) 地址，不包含查询参数、# 或账号密码');
+                }
+            }]);
+        }
+
         $rules['deposit_bounus'][] = function ($attribute, $value, $fail) {
             foreach ($value as $tier) {
                 if (!preg_match('/^\d+(\.\d+)?:\d+(\.\d+)?$/', $tier)) {
@@ -125,6 +144,17 @@ class ConfigSave extends FormRequest
             }
         };
         return $rules;
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            if ((string)$this->input('google_oauth_enable') !== '1') return;
+            $clientId = $this->has('google_client_id') ? $this->input('google_client_id') : \App\Services\SocialLoginService::googleClientId();
+            $secret = $this->input('google_client_secret') ?: \App\Services\SocialLoginService::googleClientSecret();
+            if (!$clientId) $validator->errors()->add('google_client_id', '启用 Google 登录前请填写 Client ID');
+            if (!$secret) $validator->errors()->add('google_client_secret', '启用 Google 登录前请填写 Client Secret');
+        });
     }
 
     public function messages()
