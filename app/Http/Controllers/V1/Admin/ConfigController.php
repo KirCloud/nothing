@@ -76,6 +76,7 @@ class ConfigController extends Controller
                 'google_client_secret_configured' => (bool)SocialLoginService::googleClientSecret(),
                 'google_redirect_uri' => (new SocialLoginService())->googleCallback(),
                 'oauth_frontend_url' => SocialLoginService::frontendUrl(),
+                'oauth_app_scheme' => SocialLoginService::appScheme(),
             ],
             'ticket' => [
                 'ticket_status' => config('v2board.ticket_status', 0)

@@ -13,6 +13,7 @@ class ConfigSave extends FormRequest
         'google_client_secret' => 'nullable|string|max:2048',
         'google_redirect_uri' => 'nullable|url|max:2048',
         'oauth_frontend_url' => 'nullable|url|max:2048',
+        'oauth_app_scheme' => ['nullable', 'string', 'max:32', 'regex:/^[a-z][a-z0-9+.-]*$/D', 'not_in:http,https,javascript,data,file'],
         // deposit
         'deposit_bounus' => [
             'nullable',
@@ -162,6 +163,8 @@ class ConfigSave extends FormRequest
         // illiteracy prompt
         return [
             'app_url.url' => '站点URL格式不正确，必须携带http(s)://',
+            'oauth_app_scheme.regex' => 'App URL Scheme 只能包含小写字母、数字、+、.、-，且以字母开头',
+            'oauth_app_scheme.not_in' => 'App URL Scheme 不能使用浏览器自带的协议',
             'subscribe_url.url' => '订阅URL格式不正确，必须携带http(s)://',
             'subscribe_path.regex' => '订阅路径必须以/开头',
             'server_token.min' => '通讯密钥长度必须大于16位',

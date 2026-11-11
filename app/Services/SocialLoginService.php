@@ -40,9 +40,15 @@ class SocialLoginService
         ];
     }
 
+    public static function appScheme()
+    {
+        // A scheme cleared in the panel is saved as null, which config()'s own default would not replace.
+        return config('v2board.oauth_app_scheme') ?: config('services.login.app_scheme');
+    }
+
     public static function appCallback(): ?string
     {
-        $scheme = config('services.login.app_scheme');
+        $scheme = self::appScheme();
         $valid = is_string($scheme) && preg_match('/^[a-z][a-z0-9+.-]*$/D', $scheme)
             && !in_array($scheme, ['http', 'https', 'javascript', 'data', 'file'], true);
         return $valid ? $scheme . '://oauth-callback' : null;

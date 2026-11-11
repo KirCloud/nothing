@@ -1,63 +1,79 @@
 /* Editable admin settings component; no admin vendor rebuild is required. */
 (() => {
   'use strict';
+  const TEXT_FIELDS = ['google_client_id', 'google_redirect_uri', 'oauth_frontend_url', 'oauth_app_scheme'];
+  // Mirrors the bundled config page: a title and description on the left, the control on the right.
+  const row = (title, description, control) => `
+    <div class="row google-oauth-row">
+      <div class="col-lg-6"><div class="google-oauth-title">${title}</div><div class="google-oauth-description">${description}</div></div>
+      <div class="col-lg-6 text-right">${control}</div>
+    </div>`;
+
   class GoogleOAuthSettings extends HTMLElement {
     connectedCallback() {
       if (this.initialized) return;
       this.initialized = true;
       this.className = 'google-oauth-settings';
       this.innerHTML = `
-        <form class="google-oauth-form" autocomplete="off">
-          <div class="google-oauth-heading">
-            <div><h2>Google 登录</h2><p>允许用户通过 Google 账号登录，使用本站现有的注册规则。</p></div>
-            <label class="google-oauth-toggle"><input name="google_oauth_enable" type="checkbox"><span>启用 Google 登录</span></label>
-          </div>
-          <div class="google-oauth-instructions">
-            <strong>连接 Google OAuth</strong>
-            <p>在 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a> 创建 Web 应用 OAuth 客户端，将下方回调地址登记为“已获授权的重定向 URI”，再填写客户端凭据。</p>
-          </div>
-          <div class="google-oauth-grid">
-            <label class="google-oauth-field">Client ID
-              <input class="form-control" name="google_client_id" type="text" maxlength="512" placeholder="…apps.googleusercontent.com" spellcheck="false" autocomplete="off">
-            </label>
-            <label class="google-oauth-field">Client Secret
-              <input class="form-control" name="google_client_secret" type="password" maxlength="2048" placeholder="填写 Google 客户端密钥" autocomplete="new-password">
-              <small class="google-oauth-secret-status">保存后不回显密钥；之后留空可保留原值。</small>
-            </label>
-            <label class="google-oauth-field google-oauth-wide">Google 回调地址
-              <div class="google-oauth-copy-row"><input class="form-control" name="google_redirect_uri" type="url" maxlength="2048" spellcheck="false" required><button class="btn btn-alt-secondary" type="button" data-copy>复制</button></div>
-              <small>与 Google 控制台登记的重定向 URI 完全一致。</small>
-            </label>
-            <label class="google-oauth-field google-oauth-wide">用户前端地址
-              <input class="form-control" name="oauth_frontend_url" type="url" maxlength="2048" spellcheck="false" required>
-              <small>例如 https://kirssr.com，可带子目录；不包含 # 或查询参数。登录成功后返回此站点。</small>
-            </label>
-          </div>
-          <div class="google-oauth-footer"><button class="btn btn-primary" type="submit">保存配置</button><p class="google-oauth-status" role="status" aria-live="polite"></p><button class="btn btn-alt-secondary" type="button" data-retry hidden>重新加载</button></div>
+        <form class="google-oauth-form" autocomplete="off" novalidate>
+          ${row('启用 Google 登录', '允许用户通过 Google 账号登录，沿用本站现有的注册规则。启用前需填写 Client ID 与 Client Secret。',
+            '<button type="button" role="switch" aria-checked="false" aria-label="启用 Google 登录" class="ant-switch" data-switch><span class="ant-switch-inner"></span></button>')}
+          ${row('Client ID', '在 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a> 创建 Web 应用 OAuth 客户端后获得。',
+            '<input class="form-control" name="google_client_id" type="text" maxlength="512" placeholder="…apps.googleusercontent.com" spellcheck="false" autocomplete="off" aria-label="Client ID">')}
+          ${row('Client Secret', '<span data-secret-status>保存后不回显密钥，留空可保留原值。</span>',
+            '<input class="form-control" name="google_client_secret" type="password" maxlength="2048" placeholder="请输入 Google 客户端密钥" autocomplete="new-password" aria-label="Client Secret">')}
+          ${row('Google 回调地址', '需与 Google 控制台中登记的“已获授权的重定向 URI”完全一致。',
+            '<div class="input-group"><input class="form-control" name="google_redirect_uri" type="url" maxlength="2048" placeholder="https://api.example.com/api/v1/passport/oauth/google/callback" spellcheck="false" aria-label="Google 回调地址"><div class="input-group-append"><button class="btn btn-alt-primary" type="button" data-copy>复制</button></div></div>')}
+          ${row('用户前端地址', '网页登录成功后返回的站点，可带子目录，不包含 # 或查询参数。',
+            '<input class="form-control" name="oauth_frontend_url" type="url" maxlength="2048" placeholder="https://panel.example.com" spellcheck="false" aria-label="用户前端地址">')}
+          ${row('App URL Scheme', '客户端 App 的 URL scheme（OAUTH_APP_SCHEME）。填写后，App 内发起的 Google 与邮箱链接登录会回到 <code data-scheme-preview>scheme://oauth-callback</code>；留空则沿用 .env 中的值，两处都未设置时不允许 App 回跳。',
+            '<input class="form-control" name="oauth_app_scheme" type="text" maxlength="32" placeholder="kirssr" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="App URL Scheme">')}
+          <div class="google-oauth-status-row"><span class="google-oauth-status" role="status" aria-live="polite"></span><button class="btn btn-sm btn-alt-secondary" type="button" data-retry hidden>重新加载</button></div>
         </form>`;
       this.form = this.querySelector('form');
       this.status = this.querySelector('[role="status"]');
-      this.form.addEventListener('submit', event => this.save(event));
+      this.toggle = this.querySelector('[data-switch]');
+      this.form.addEventListener('submit', event => { event.preventDefault(); this.save(); });
+      this.form.addEventListener('input', () => { this.updateSchemePreview(); this.scheduleSave(); });
+      this.toggle.addEventListener('click', () => { this.setEnabled(!this.enabled); this.scheduleSave(0); });
       this.querySelector('[data-copy]').addEventListener('click', () => this.copyCallback());
       this.querySelector('[data-retry]').addEventListener('click', () => this.load());
       this.load();
     }
 
     disconnectedCallback() {
+      clearTimeout(this.saveTimer);
       this.controller?.abort();
       this.initialized = false;
     }
 
     field(name) { return this.form.elements.namedItem(name); }
 
-    setBusy(busy) {
-      for (const control of this.form.elements) control.disabled = busy;
-      this.form.setAttribute('aria-busy', String(busy));
+    setEnabled(enabled) {
+      this.enabled = enabled;
+      this.toggle.classList.toggle('ant-switch-checked', enabled);
+      this.toggle.setAttribute('aria-checked', String(enabled));
+    }
+
+    setLocked(locked) {
+      for (const control of this.form.elements) if (!control.hasAttribute('data-retry')) control.disabled = locked;
+      this.toggle.classList.toggle('ant-switch-disabled', locked);
     }
 
     message(text, error = false) {
       this.status.textContent = text;
       this.status.dataset.error = String(error);
+    }
+
+    updateSchemePreview() {
+      const scheme = this.field('oauth_app_scheme').value.trim() || 'scheme';
+      this.querySelector('[data-scheme-preview]').textContent = `${scheme}://oauth-callback`;
+    }
+
+    updateSecretStatus() {
+      this.field('google_client_secret').placeholder = this.secretConfigured ? '已配置；留空保留，填写新值替换' : '请输入 Google 客户端密钥';
+      this.querySelector('[data-secret-status]').textContent = this.secretConfigured
+        ? '密钥已配置。保存后不回显，留空将保留原值。' : '尚未配置密钥。保存后不回显，之后留空可保留原值。';
     }
 
     async api(path, data) {
@@ -80,50 +96,58 @@
       return result.data;
     }
 
-    updateSecretStatus() {
-      this.field('google_client_secret').value = '';
-      this.field('google_client_secret').placeholder = this.secretConfigured ? '已配置；留空保留，填写新值替换' : '填写 Google 客户端密钥';
-      this.querySelector('.google-oauth-secret-status').textContent = this.secretConfigured ? '密钥已配置。保存后不回显，留空将保留原值。' : '尚未配置密钥。保存后不回显，之后留空可保留原值。';
-    }
-
     async load() {
       this.controller?.abort();
       this.controller = new AbortController();
-      this.setBusy(true);
+      this.setLocked(true);
       this.message('正在读取配置…');
       this.querySelector('[data-retry]').hidden = true;
       try {
         const data = (await this.api('fetch?key=google')).google;
-        this.field('google_oauth_enable').checked = Boolean(Number(data.google_oauth_enable));
-        for (const name of ['google_client_id', 'google_redirect_uri', 'oauth_frontend_url']) this.field(name).value = data[name] || '';
+        this.setEnabled(Boolean(Number(data.google_oauth_enable)));
+        for (const name of TEXT_FIELDS) this.field(name).value = data[name] || '';
+        this.field('google_client_secret').value = '';
         this.secretConfigured = Boolean(data.google_client_secret_configured);
         this.updateSecretStatus();
+        this.updateSchemePreview();
         this.message('');
-        this.setBusy(false);
+        this.setLocked(false);
       } catch (error) {
         if (error.name === 'AbortError') return;
         this.message(error.message, true);
-        const retry = this.querySelector('[data-retry]'); retry.hidden = false; retry.disabled = false;
+        this.querySelector('[data-retry]').hidden = false;
       }
     }
 
-    async save(event) {
-      event.preventDefault();
-      const data = { google_oauth_enable: this.field('google_oauth_enable').checked ? 1 : 0 };
-      for (const name of ['google_client_id', 'google_redirect_uri', 'oauth_frontend_url']) data[name] = this.field(name).value.trim();
-      const secret = this.field('google_client_secret').value.trim();
+    // The bundled config page saves 1.5s after the last edit; this tab does the same.
+    scheduleSave(delay = 1500) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = setTimeout(() => this.save(), delay);
+    }
+
+    async save() {
+      clearTimeout(this.saveTimer);
+      if (this.saving) { this.saveAgain = true; return; }
+      const data = { google_oauth_enable: this.enabled ? 1 : 0 };
+      for (const name of TEXT_FIELDS) data[name] = this.field(name).value.trim();
+      const secretField = this.field('google_client_secret');
+      const secret = secretField.value.trim();
       if (secret) data.google_client_secret = secret;
-      this.setBusy(true);
+      this.saving = true;
       this.message('正在保存…');
       try {
         await this.api('save', data);
-        this.secretConfigured = this.secretConfigured || Boolean(secret);
-        this.updateSecretStatus();
+        if (secret) {
+          this.secretConfigured = true;
+          if (secretField.value.trim() === secret) secretField.value = '';
+          this.updateSecretStatus();
+        }
         this.message('配置已保存并生效。');
       } catch (error) {
         if (error.name !== 'AbortError') this.message(error.message, true);
       } finally {
-        if (this.isConnected) this.setBusy(false);
+        this.saving = false;
+        if (this.saveAgain && this.isConnected) { this.saveAgain = false; this.save(); }
       }
     }
 

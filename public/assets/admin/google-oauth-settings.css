@@ -1,23 +1,9 @@
-.google-oauth-settings{display:block;color:#495057;font-size:14px}
-.google-oauth-settings *{box-sizing:border-box}
-.google-oauth-form{padding:28px 30px;max-width:1100px}
-.google-oauth-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:24px}
-.google-oauth-heading h2{font-size:20px;font-weight:600;margin:0 0 8px;color:#343a40}
-.google-oauth-heading p,.google-oauth-instructions p{margin:0;color:#6c757d;line-height:1.7}
-.google-oauth-toggle{display:flex;align-items:center;gap:9px;white-space:nowrap;margin:0;font-weight:500;cursor:pointer}
-.google-oauth-toggle input{width:17px;height:17px;accent-color:#007bff}
-.google-oauth-instructions{background:#f5f8fc;border:1px solid #e4ebf5;border-radius:6px;padding:16px 18px;margin-bottom:26px}
-.google-oauth-instructions strong{display:block;color:#343a40;margin-bottom:5px}
-.google-oauth-instructions a{color:#1769c2;text-decoration:underline}
-.google-oauth-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.google-oauth-field{display:flex;flex-direction:column;gap:9px;min-width:0;margin:0;font-weight:600}
-.google-oauth-field input{width:100%;min-width:0;font-size:14px;font-weight:400}
-.google-oauth-field small{font-weight:400;color:#6c757d;line-height:1.6;overflow-wrap:anywhere}
-.google-oauth-wide{grid-column:1/-1}
-.google-oauth-copy-row{display:flex;gap:10px}
-.google-oauth-copy-row button{flex-shrink:0}
-.google-oauth-footer{display:flex;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid #eee;padding-top:22px;margin-top:28px}
-.google-oauth-status{margin:0;color:#287246;line-height:1.5}
+.google-oauth-settings{display:block}
+.google-oauth-row{margin:0;padding:20px;border-bottom:1px solid #eee}
+.google-oauth-title{font-weight:700;margin-bottom:5px}
+.google-oauth-description{font-size:12px;margin-bottom:5px;color:#666;overflow-wrap:anywhere}
+.google-oauth-description code{font-size:12px}
+.google-oauth-status-row{display:flex;align-items:center;justify-content:flex-end;gap:12px;min-height:54px;padding:12px 20px}
+.google-oauth-status{font-size:12px;color:#287246}
 .google-oauth-status[data-error=true]{color:#b42318}
 .google-oauth-settings [hidden]{display:none!important}
-@media(max-width:767px){.google-oauth-form{padding:22px 18px}.google-oauth-heading{align-items:flex-start;flex-direction:column;gap:16px}.google-oauth-grid{grid-template-columns:1fr;gap:22px}.google-oauth-copy-row{gap:8px}.google-oauth-footer{align-items:flex-start;flex-direction:column;gap:12px}}

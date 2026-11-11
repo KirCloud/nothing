@@ -118,6 +118,20 @@ class SocialLoginTest extends TestCase
         }
         $this->postJson($this->adminConfigUrl('save'), ['google_redirect_uri' => 'ftp://api.example.com/callback'], $headers)
             ->assertStatus(422)->assertJsonValidationErrors('google_redirect_uri');
+        foreach (['https', 'javascript', 'Kirssr', 'kirssr://', '1app'] as $scheme) {
+            $this->postJson($this->adminConfigUrl('save'), ['oauth_app_scheme' => $scheme], $headers)
+                ->assertStatus(422)->assertJsonValidationErrors('oauth_app_scheme');
+        }
+    }
+
+    public function testPanelAppSchemeOverridesEnvironment(): void
+    {
+        config(['services.login.app_scheme' => 'envapp', 'v2board.oauth_app_scheme' => 'kirssr']);
+        $this->assertSame('kirssr://oauth-callback', SocialLoginService::appCallback());
+        $this->getJson($this->adminConfigUrl('fetch') . '?key=google', $this->adminHeaders())
+            ->assertOk()->assertJsonPath('data.google.oauth_app_scheme', 'kirssr');
+        config(['v2board.oauth_app_scheme' => null]);
+        $this->assertSame('envapp://oauth-callback', SocialLoginService::appCallback());
     }
 
     public function testSavingGoogleSettingsRetainsBlankSecretAndOtherPanelSettings(): void

@@ -37,7 +37,7 @@ Google 验证邮箱后，新账号沿用本站的注册关闭、邀请码、邮�
 OAUTH_APP_SCHEME=kirssr
 ```
 
-客户端直接调用本 API，登录完成后需要回到 App 而不是用户前端。配置 App 的 URL scheme 后，客户端在 `/passport/oauth/auth` 与 `/passport/auth/loginWithMailLink` 传入 `redirect=kirssr://oauth-callback`，Google 回调会直接跳转到该深链；邮件中的链接先指向 `/api/v1/passport/oauth/app`，再由它跳转到深链，因为多数邮件客户端不允许点击自定义 scheme。未配置或 scheme 不一致时请求返回 422。Telegram 登录全程走 API 轮询，无需此项。
+客户端直接调用本 API，登录完成后需要回到 App 而不是用户前端。App 的 URL scheme 可在后台“系统配置 → Google 登录 → App URL Scheme”填写，面板中的值优先于 `.env`。配置后，客户端在 `/passport/oauth/auth` 与 `/passport/auth/loginWithMailLink` 传入 `redirect=kirssr://oauth-callback`，Google 回调会直接跳转到该深链；邮件中的链接先指向 `/api/v1/passport/oauth/app`，再由它跳转到深链，因为多数邮件客户端不允许点击自定义 scheme。未配置或 scheme 不一致时请求返回 422。Telegram 登录全程走 API 轮询，无需此项。
 
 ## Telegram 登录
 
