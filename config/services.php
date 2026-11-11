@@ -2,6 +2,25 @@
 
 return [
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'login' => [
+        'frontend_url' => env('OAUTH_FRONTEND_URL'),
+        'telegram_enabled' => env('TELEGRAM_LOGIN_ENABLED', false),
+        'telegram_bot_name' => env('TELEGRAM_BOT_USERNAME'),
+        'mail_link_enabled' => env('MAIL_LINK_LOGIN_ENABLED', false),
+    ],
+
+    'captcha' => [
+        'type' => env('CAPTCHA_TYPE', 'google'),
+        'site_key' => env('CAPTCHA_SITE_KEY'),
+        'secret_key' => env('CAPTCHA_SECRET_KEY'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

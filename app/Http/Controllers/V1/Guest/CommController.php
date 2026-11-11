@@ -4,6 +4,8 @@ namespace App\Http\Controllers\V1\Guest;
 
 use App\Http\Controllers\Controller;
 use App\Utils\Dict;
+use App\Services\CaptchaService;
+use App\Services\SocialLoginService;
 use Illuminate\Support\Facades\Http;
 
 class CommController extends Controller
@@ -19,7 +21,10 @@ class CommController extends Controller
                     ? $this->getEmailSuffix()
                     : 0,
                 'is_recaptcha' => (int)config('v2board.recaptcha_enable', 0) ? 1 : 0,
-                'recaptcha_site_key' => config('v2board.recaptcha_site_key'),
+                'recaptcha_site_key' => CaptchaService::siteKey(),
+                'captcha_type' => CaptchaService::type(),
+                'auth_providers' => SocialLoginService::providers(),
+                'telegram_bot_name' => config('services.login.telegram_bot_name'),
                 'app_description' => config('v2board.app_description'),
                 'app_url' => config('v2board.app_url'),
                 'logo' => config('v2board.logo'),

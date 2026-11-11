@@ -859,3 +859,14 @@ CHANGE `action_value` `action_value` text NULL AFTER `action`;
 
 ALTER TABLE `v2_server_v2node`
 ADD `trusted_x_forwarded_for` varchar(255) COLLATE 'utf8mb4_general_ci' NULL COMMENT '信任的x-forwarded-for头部' AFTER `network_settings`;
+CREATE TABLE IF NOT EXISTS `v2_oauth_identity` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `user_id` int unsigned NOT NULL,
+    `provider` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `provider_id` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` int unsigned DEFAULT NULL,
+    `updated_at` int unsigned DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `provider_identity` (`provider`, `provider_id`),
+    KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

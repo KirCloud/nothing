@@ -587,3 +587,15 @@ CREATE TABLE `v2_user` (
 
 
 -- 2025-09-12 10:05:00
+
+CREATE TABLE IF NOT EXISTS `v2_oauth_identity` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `user_id` int unsigned NOT NULL,
+    `provider` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `provider_id` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` int unsigned DEFAULT NULL,
+    `updated_at` int unsigned DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `provider_identity` (`provider`, `provider_id`),
+    KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
